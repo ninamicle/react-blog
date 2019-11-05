@@ -10,25 +10,43 @@ class CommentBox extends React.Component{
         this.state = {
             data: []};
         }
+        handleCommentSubmit(comment){
+            $.ajax({
+                url: this.props.url,
+                dataType: 'json',
+                type: 'POST',
+                data: comment,
+                success: function(data) {
+                  this.setState({data: data});
+                }.bind(this),
+                error: function(xhr, status, err) {
+                  console.error(this.props.url, status, err.toString());
+                }.bind(this)
+              });
+        }
+        loadCommentsFromServer(){
+            $.ajax({
+                url: this.props.url,
+                dataType: 'json',
+                type: 'GET',
+                success: function(data) {
+                  this.setState({data: data});
+                }.bind(this),
+                error: function(xhr, status, err) {
+                  console.error(this.props.url, status, err.toString());
+                }.bind(this)
+              });
+        }
     componentDidMount(){
-        $.ajax({
-            url: this.props.url,
-            dataType: 'json',
-            type: 'GET',
-            success: function(data) {
-              this.setState({data: data});
-            }.bind(this),
-            error: function(xhr, status, err) {
-              console.error(this.props.url, status, err.toString());
-            }.bind(this)
-          });
+       this.loadCommentsFromServer();
+       setInterval(this.loadCommentsFromServer.bind(this), this.props.pollInterval)
         }
     render(){
         return(
             <div className='commentBox'>
                 <h1>Lista dei commenti</h1>
                 <CommentList data={this.state.data}/>
-                <CommentForm/>
+                <CommentForm onCommentSubmit={this.handleCommentSubmit.bind(this)}/>
             </div>
         );
     }
@@ -52,11 +70,32 @@ class CommentList extends React.Component{
 
 
 class CommentForm extends React.Component{
+
+    handleSubmit(event){
+event.preventDefault();//impedisce il comportameno di default
+var author = ReactDOM.findDOMNode(this.refs.author).value;
+var text = ReactDOM.findDOMNode(this.refs.text).value;
+
+if(!text || !author){
+    return;
+}
+    //console.log(`${author}: ${text}`);
+    this.props.onCommentSubmit({author: author, text: text});
+    //Pulisco il form dopo l'esecuzione
+    ReactDOM.findDOMNode(this.refs.author).value = '';
+    ReactDOM.findDOMNode(this.refs.text).value = '';
+    return;
+    }
+
+    
     render(){
         return(
-            <div className='commentForm'>
-                Io sono un CommentForm!
-            </div>
+            <form className='commentForm' onSubmit={this.handleSubmit.bind(this)}>
+                <input type='text' placeholder='Il tuo nome' ref='author'/>
+                <input type='text' placeholder='Il tuo commento' ref='text'/>
+                <input type='submit' value='Invia'/>
+            </form>
+           
         );
     }
 }
@@ -80,6 +119,6 @@ rawMarkup (myMarkupString){
     }
 }
 ReactDOM.render(
-    <CommentBox url="/api/comments"/>,
+    <CommentBox url="/api/comments" pollInterval="2000"/>,
     document.getElementById('content')
 );
